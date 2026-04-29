@@ -1,0 +1,7 @@
+# .gitignore
+# this will just ignore the elf files generated from the build processs
+
+build/
+*.bin
+*.elf
+*.map
