@@ -11,24 +11,14 @@ CytronMD motorRight(PWM_DIR, 14, 15);  // M2
 CytronMD motorLeft(PWM_DIR, 10, 11);   // M4
  
 // ===== Speed settings =====
-const int driveSpeed = 5;
-const int turnSpeed = 5;
+const int driveSpeed = 15;
+const int turnSpeed = 15;
  
 // ===== State tracking =====
-// 0=waiting, 1=calibration, 2=drive, 3=stopA, 4=turn, 5=stop
+// 0=waiting, 1=calibration, 2=drive, 3=stop1, 4=turn, 5=stop2
 int currentState = 0;
 bool lastPinState = LOW;
-
-enum Level {
-  WAITING,
-  CALIBRATION,
-  DRIVE,
-  STOPA,
-  TURN,
-  STOPB
-};
-
-
+ 
 void stopMotors() {
   motorLeft.setSpeed(0);
   motorRight.setSpeed(0);
@@ -45,18 +35,7 @@ void playMusic() {
     noTone(buzzerPin);
   }
 }
-
- void setMotorSpeed(CytronMD &motor, int pwmPin, int dirPin, int speed) {
-  if (speed >= 0) {
-    // Positive — library works fine, use it normally
-    motor.setSpeed(speed);
-  } else {
-    // Negative — bypass library, control pins manually
-    digitalWrite(dirPin, HIGH);          // set direction to reverse
-    analogWrite(pwmPin, -speed);         // flip sign, apply PWM
-  }
-}
-
+ 
 void setup() {
   Serial.begin(115200);
  
@@ -76,7 +55,6 @@ void loop() {
   if (pinNow == HIGH && lastPinState == LOW) {
     // Pulse detected — advance state
     currentState++;
-    if currentState == 6 {currentState = 0};
     Serial.print("PULSE DETECTED -> STATE: ");
     Serial.println(currentState);
  
@@ -87,12 +65,12 @@ void loop() {
   lastPinState = pinNow;
  
   // === STATE 0: WAITING ===
-  if (currentState == WAITING) {
+  if (currentState == 0) {
     stopMotors();
   }
  
   // === STATE 1: CALIBRATION — motors off, play music ===
-  else if (currentState == CALIBRATION) {
+  else if (currentState == 1) {
     stopMotors();
     // Music plays once when entering
     static bool musicPlayed = false;
@@ -105,30 +83,28 @@ void loop() {
   }
  
   // === STATE 2: DRIVE — both motors slow reverse ===
-  else if (currentState == DRIVE) {
+  else if (currentState == 2) {
     static bool driveStarted = false;
     if (!driveStarted) {
       Serial.println("STATE 2: DRIVE — SLOW REVERSE");
       driveStarted = true;
     }
-   // motorLeft.setSpeed(-driveSpeed);
-   // motorRight.setSpeed(-driveSpeed);
-    setMotorSpeed(motorLeft, 10, 11, -15);
-    setMotorSpeed(motorRight, 14, 15, -15);
+    motorLeft.setSpeed(-driveSpeed);
+    motorRight.setSpeed(-driveSpeed);
   }
  
-  // === STATE 3: STOP A — motors off ===
-  else if (currentState == STOPA) {
-    static bool stopAStarted = false;
-    if (!stopAStarted) {
-      Serial.println("STATE 3: STOP A — MOTORS OFF");
-      stopAStarted = true;
+  // === STATE 3: STOP 1 — motors off ===
+  else if (currentState == 3) {
+    static bool stop1Started = false;
+    if (!stop1Started) {
+      Serial.println("STATE 3: STOP 1 — MOTORS OFF");
+      stop1Started = true;
     }
     stopMotors();
   }
  
   // === STATE 4: TURN — M4 reverse, M2 forward ===
-  else if (currentState == TURN) {
+  else if (currentState == 4) {
     static bool turnStarted = false;
     if (!turnStarted) {
       Serial.println("STATE 4: TURN — M4 REVERSE, M2 FORWARD");
@@ -138,12 +114,12 @@ void loop() {
     motorRight.setSpeed(turnSpeed);   // M2 forward
   }
  
-  // === STATE 5: STOP B — motors off, done ===
-  else if (currentState == STOPB) {
-    static bool stopBStarted = false;
-    if (!stopBStarted) {
-      Serial.println("STATE 5: STOP B — COMPLETE");
-      stopBStarted = true;
+  // === STATE 5: STOP 2 — motors off, done ===
+  else if (currentState == 5) {
+    static bool stop2Started = false;
+    if (!stop2Started) {
+      Serial.println("STATE 5: STOP 2 — COMPLETE");
+      stop2Started = true;
     }
     stopMotors();
   }

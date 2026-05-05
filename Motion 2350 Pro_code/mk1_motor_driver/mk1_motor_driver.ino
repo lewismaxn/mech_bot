@@ -1,5 +1,8 @@
 #include "CytronMotorDriver.h"
- 
+ #define MLPWM 10
+ #define MRPWM 8
+ #define MLDIR 11
+ #define MRDIR 9
 // ===== Input from ESP32 =====
 const int statePin = 16;
  
@@ -7,12 +10,13 @@ const int statePin = 16;
 const int buzzerPin = 22;
  
 // ===== Motors — PWM_DIR mode =====
-CytronMD motorRight(PWM_DIR, 14, 15);  // M2
+CytronMD motorRight(PWM_DIR, 8, 9);  // M2
 CytronMD motorLeft(PWM_DIR, 10, 11);   // M4
+
  
 // ===== Speed settings =====
-const int driveSpeed = 5;
-const int turnSpeed = 5;
+const int driveSpeed = 15;
+const int turnSpeed = 15;
  
 // ===== State tracking =====
 // 0=waiting, 1=calibration, 2=drive, 3=stopA, 4=turn, 5=stop
@@ -48,12 +52,13 @@ void playMusic() {
 
  void setMotorSpeed(CytronMD &motor, int pwmPin, int dirPin, int speed) {
   if (speed >= 0) {
-    // Positive — library works fine, use it normally
-    motor.setSpeed(speed);
+    // Positive
+    digitalWrite(dirPin, LOW);
+    analogWrite(pwmPin, speed);
   } else {
-    // Negative — bypass library, control pins manually
+    // Negative
     digitalWrite(dirPin, HIGH);          // set direction to reverse
-    analogWrite(pwmPin, -speed);         // flip sign, apply PWM
+    analogWrite(pwmPin, speed);         // apply PWM
   }
 }
 
@@ -76,7 +81,7 @@ void loop() {
   if (pinNow == HIGH && lastPinState == LOW) {
     // Pulse detected — advance state
     currentState++;
-    if currentState == 6 {currentState = 0};
+    if (currentState == 6) {currentState = 0;}
     Serial.print("PULSE DETECTED -> STATE: ");
     Serial.println(currentState);
  
@@ -98,7 +103,7 @@ void loop() {
     static bool musicPlayed = false;
     if (!musicPlayed) {
       Serial.println("STATE 1: CALIBRATION — PLAYING MUSIC");
-      playMusic();
+      //playMusic();
       musicPlayed = true;
       Serial.println("STATE 1: CALIBRATION — WAITING");
     }
@@ -113,8 +118,8 @@ void loop() {
     }
    // motorLeft.setSpeed(-driveSpeed);
    // motorRight.setSpeed(-driveSpeed);
-    setMotorSpeed(motorLeft, 10, 11, -15);
-    setMotorSpeed(motorRight, 14, 15, -15);
+    setMotorSpeed(motorLeft, MLPWM, MLDIR, -turnSpeed);
+    setMotorSpeed(motorRight, MRPWM, MRDIR, -turnSpeed);
   }
  
   // === STATE 3: STOP A — motors off ===
@@ -134,8 +139,10 @@ void loop() {
       Serial.println("STATE 4: TURN — M4 REVERSE, M2 FORWARD");
       turnStarted = true;
     }
-    motorLeft.setSpeed(-turnSpeed);   // M4 reverse
-    motorRight.setSpeed(turnSpeed);   // M2 forward
+    motorRight.setSpeed(turnSpeed);
+    setMotorSpeed(motorRight, MRPWM, MRDIR, turnSpeed);  // M2 forward
+    setMotorSpeed(motorLeft, MLPWM, MLDIR, -turnSpeed);   // M4 reverse
+    
   }
  
   // === STATE 5: STOP B — motors off, done ===

@@ -14,14 +14,26 @@
 // Button for state advance
 #define BUTTON_PIN 43
  
-// State transfer to Motion 2350 Pro
+// State transfer to Motion 2350 Pro and Slave TTGO
 #define STATE_OUT_PIN 1
+#define SLAVE_PIN 10
  
 // Create display object
 TFT_eSPI tft = TFT_eSPI();
  
 // States: 1=Measurements, 2=Calibration, 3=Drive, 4=Stop1, 5=Turn, 6=Stop2
-int currentState = 1;
+enum Level {
+  WAITING,
+  CALIBRATION,
+  DRIVE,
+  STOPA,
+  TURN,
+  DRIVERAMP,
+  STOPB,
+  DOWNRAMP,
+  FINISH
+};
+Level currentState = WAITING;
  
 // MPU-6050 data
 float accX, accY, accZ;
@@ -104,8 +116,10 @@ void readMPU6050() {
  
 void sendPulse() {
   digitalWrite(STATE_OUT_PIN, HIGH);
+  digitalWrite(SLAVE_PIN, HIGH);
   delay(100);
   digitalWrite(STATE_OUT_PIN, LOW);
+  digitalWrite(SLAVE_PIN, LOW);
   pulseCount++;
   Serial.print("PULSE SENT #");
   Serial.println(pulseCount);
@@ -376,7 +390,9 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(STATE_OUT_PIN, OUTPUT);
+  pinMode(SLAVE_PIN, OUTPUT);
   digitalWrite(STATE_OUT_PIN, LOW);
+  digitalWrite(SLAVE_PIN, LOW);
  
   initMPU6050();
  
@@ -390,57 +406,57 @@ void loop() {
   readMPU6050();
  
   // === STATE 1: MEASUREMENTS ===
-  if (currentState == 1) {
+  if (currentState == WAITING) {
     displayState1();
  
     if (buttonPressed()) {
       sendPulse();
-      currentState = 2;
+      currentState++;
       runCalibration();
       sendPulse();
-      currentState = 3;
+      currentState++
       tft.fillScreen(TFT_BLUE);
     }
   }
  
   // === STATE 3: DRIVE ===
-  else if (currentState == 3) {
+  else if (currentState == DRIVE) {
     displayDrive();
  
     if (distance > 6 && distance < 400) {
       sendPulse();
-      currentState = 4;
+      currentState++;
       tft.fillScreen(TFT_RED);
     }
   }
  
   // === STATE 4: STOP 1 ===
-  else if (currentState == 4) {
+  else if (currentState == STOPA) {
     displayStop(1);
  
     if (buttonPressed()) {
       sendPulse();
       yawAngle = 0;
       lastGyroTime = millis();
-      currentState = 5;
+      currentState++;
       tft.fillScreen(TFT_BLUE);
     }
   }
  
   // === STATE 5: TURN ===
-  else if (currentState == 5) {
+  else if (currentState == TURN) {
     displayTurn();
  
     // Turn left = negative yaw
     if (yawAngle <= -90.0) {
       sendPulse();
-      currentState = 6;
+      currentState++;
       tft.fillScreen(TFT_RED);
     }
   }
  
   // === STATE 6: STOP 2 ===
-  else if (currentState == 6) {
+  else if (currentState == DRIVERAMP) {
     displayStop(2);
   }
  
